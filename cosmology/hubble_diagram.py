@@ -62,6 +62,9 @@ for value in sigma_distances:
 sigma_distances = np.array(new_values)
 
 
+# create csv file with used data (aplying cuts, etc)
+df_used = pd.DataFrame({'name':names, 'redshift':redshifts, 'dm':dms, 'dmerr':dm_errs})
+df_used.to_csv(f'{dirpath}/used_data.csv', index=False)
 
 
 # Cepheid data (Alcaide 2023)
