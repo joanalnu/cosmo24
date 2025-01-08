@@ -6,9 +6,13 @@ import numpy as np
 from scipy.optimize import curve_fit
 import xlwings as xw
 dirpath = os.path.dirname(os.path.abspath(__file__))
-data_path = f'{dirpath}/SNCOSMO/Results-copy'
-path_redshift = '/Users/j.alcaide/Desktop/Joves i Ciència/article/Hubble computing/without_outliners/copy_redshift.xlsx'
-dist_path = '/Users/j.alcaide/Desktop/Joves i Ciència/article/Hubble computing/without_outliners/copy_I_distances.txt'
+data_path = dirpath
+# path_redshift = '/Users/j.alcaide/Desktop/Joves i Ciència/article/Hubble computing/without_outliners/copy_redshift.xlsx'
+# dist_path = '/Users/j.alcaide/Desktop/Joves i Ciència/article/Hubble computing/without_outliners/copy_I_distances.txt'
+jic_2023_path = '/Users/joanalnu/Library/Mobile Documents/com~apple~CloudDocs/Joves i Ciència/article/Hubble computing/without_outliners'
+path_redshift = jic_2023_path + "/copy_redshift.xlsx"
+dist_path = jic_2023_path + "/copy_I_distances.txt"
+
 def to_rgb(a,b,c):
     return (a/255, b/255, c/255)
 
@@ -97,7 +101,8 @@ with open(dist_path, 'r') as f:
             cep_df.loc[cep_df['name']==line[0].replace('_',' '), 'I_dist_err'] = float(line[1])/1000000-float(line[2])/1000000 # Mpc
 
 # reading V distances
-dist_path = '/Users/j.alcaide/Desktop/Joves i Ciència/article/Hubble computing/without_outliners/copy_V_distances.txt'
+# dist_path = '/Users/j.alcaide/Desktop/Joves i Ciència/article/Hubble computing/without_outliners/copy_V_distances.txt'
+dist_path = "/Users/joanalnu/Library/Mobile Documents/com~apple~CloudDocs/Joves i Ciència/article/Hubble computing/without_outliners/copy_V_distances.txt"
 with open(dist_path, 'r') as f:
     content = f.readlines()
     for line in content:
@@ -202,7 +207,7 @@ def model_computeHo(x_data, H0):
     return distmod
 
 # compute best fit models
-# model_flatlambdacdmxmxm
+# model_flatlambdacdm
 guess = [70, 0.3]
 bounds = ([67.0, 0.0],[73.0, 1.0])
 popt_flat, pcov_flat = curve_fit(model_flatlambdacdm, redshifts, dms, sigma=dm_errs, p0=guess, bounds=bounds)
@@ -254,11 +259,11 @@ plt.figure()
 plt.scatter(redshifts, dms)
 plt.errorbar(redshifts, dms, yerr=[dm_errs], fmt='none')
 
-# plt.plot(z, distmod2, label='distmod2', color=(187/255,58/255,50/255))
-# plt.plot(z, distmod3, label='distmod3', color=(81/255,197/255,58/255))
+plt.plot(z, distmod2, label='distmod2', color=(187/255,58/255,50/255))
+plt.plot(z, distmod3, label='distmod3', color=(81/255,197/255,58/255))
 plt.plot(z, distmod_org, label='original', color='gray', alpha=0.8)
 plt.plot(z, distmod_bestfit_cpt, label=f'Best Fit (only $H_0$): $H_0$={H0_best_cpt:.5f} ($\Omega_m$=0.3)')
-# plt.plot(z, distmod_manual, label='distmod', color=(239/255, 134/255, 54/255))
+plt.plot(z, distmod_manual, label='distmod', color=(239/255, 134/255, 54/255))
 plt.plot(z, distmod_bestfit_flat, label=f'Best Fit: $H_0$={H0_best_flat:.5f}, $\Omega_m$={Om0_best_flat:.5f}', color='red', linewidth=1)
 plt.plot(z, distmod_bestfit_lam, label=f'Best Fit: $H_0$={H0_best_lam:.5f}, $\Omega_m$={Om0_best_lam:.5f}, $\Omega_\Lambda$={Ode0_best_lam:.5f}', color='orange', linewidth=1, linestyle='dashed')
 # plt.plot(z, distmod_bestfit_res, label=f'Best Fit: $H_0$={H0_res:.5f}, $\Omega_m$={Om0_res:.5f}, $\Omega_\Lambda$={Ode0_res:.5f}', color='green', linewidth=1, linestyle='dashed')
@@ -337,7 +342,7 @@ axs[1,0].scatter(vel2, i_dist, label='I Cepheid', marker="2")
 axs[1,0].errorbar(vel2, i_dist, yerr=[i_dist_err], fmt='None')
 axs[1,0].scatter(vel2, v_dist, label='V Cepheid', marker="2")
 axs[1,0].errorbar(vel2, v_dist, yerr=[v_dist_err], fmt='None')
-axs[1,0].plot(full_vels, cepheid_fit, color=(0.0,1.0,0.0,0.5), label=f'Ho(SN) {(1/slope4):.3f}±{std_error4:.3f}') # cepheid_fit model
+# axs[1,0].plot(full_vels, cepheid_fit, color=(0.0,1.0,0.0,0.5), label=f'Ho(SN) {(1/slope4):.3f}±{std_error4:.3f}') # cepheid_fit model
 axs[1,0].set_xlabel('Velocity [km/s]')
 axs[1,0].set_ylabel('Distances [Mpc]')
 axs[1,0].set_title('Cepheid Only')
@@ -365,7 +370,7 @@ plt.tight_layout()
 fig.savefig(f'{dirpath}/ultimate-fig.png', dpi=512)
 
 
-# plotting SN + cepheid velociti-distance (linear fits) alone
+# # plotting SN + cepheid velociti-distance (linear fits) alone
 fig3, ax = plt.subplots(1,1, figsize=(6,6))
 ax.scatter(velocities, distances, label='SN', color=to_rgb(197,58,50), marker='*')
 ax.errorbar(velocities, distances, yerr=[sigma_distances], fmt='None', color='gray')

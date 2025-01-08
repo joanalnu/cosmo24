@@ -1,0 +1,6 @@
+.DS_Store
+
+SNCOSMO_repeat
+
+cosmology/__pycache__/
+cosmology/.idea
