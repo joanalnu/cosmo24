@@ -63,7 +63,17 @@ sigma_distances = np.array(new_values)
 
 
 # create csv file with used data (aplying cuts, etc)
-df_used = pd.DataFrame({'name':names, 'redshift':redshifts, 'dm':dms, 'dmerr':dm_errs})
+from wiserep_api import get_target_property
+hosts = list()
+types = list()
+coords = list()
+for name in names:
+    hosts.append(get_target_property(name, 'host'))
+    types.append(get_target_property(name, 'type'))
+    coords.append(get_target_property(name, 'coords'))
+
+df_used = pd.DataFrame({'name':names, 'redshift':redshifts, 'dm':dms, 'dmerr':dm_errs, 'host':hosts, 'type':types, 'coordinates':coords})
+
 df_used.to_csv(f'{dirpath}/used_data.csv', index=False)
 
 
@@ -315,7 +325,7 @@ axs[2,1].legend()
 # axs[2,2].plot(z_evo, Tcmb_z, label='T CMB')
 plt.tight_layout()
 plt.legend()
-random_fig.savefig('max_randomness.png',dpi=300)
+random_fig.savefig('cosmo_sim.png',dpi=300)
 ###################################################################################################################################################################################################################################################
 
 
@@ -388,7 +398,7 @@ ax.set_xlabel('Velocities [km/s]')
 ax.set_ylabel('Distances [Mpc]')
 ax.set_title('Hubble Diagram')
 ax.legend()
-fig3.savefig('mostbeautifulfigureinuniverse.png', dpi=600)
+fig3.savefig('linear_fits.png', dpi=600)
 
 # Compute hubble time with linear fit (best_fit2 model)
 Ho_SN = (1/slope2)

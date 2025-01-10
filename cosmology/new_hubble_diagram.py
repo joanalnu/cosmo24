@@ -30,6 +30,10 @@ df = df[df['dm']<40]
 df = df[df['dmerr']<100] # avoiding one extreme errorbar
 df = df[df['redshift']<0.125]
 
+# additional cuts # new cuts, not the same as in original hubble_diagram.py
+# df = df.drop(df[(df['redshift'] > 0.05) & (df['dm'] < 34)].index)
+# df = df.drop(df[(df['redshift'] > 0.09) & (df['dm'] > 36)].index)
+
 # Creating variables
 names = np.array(df['name'])
 redshifts = np.array(df['redshift'])
@@ -55,7 +59,17 @@ sigma_distances = np.array(new_values)
 
 
 # create csv file with used data (aplying cuts, etc)
-df_used = pd.DataFrame({'name':names, 'redshift':redshifts, 'dm':dms, 'dmerr':dm_errs})
+from wiserep_api import get_target_property
+hosts = list()
+types = list()
+coords = list()
+for name in names:
+    hosts.append(get_target_property(name, 'host'))
+    types.append(get_target_property(name, 'type'))
+    coords.append(get_target_property(name, 'coords'))
+
+df_used = pd.DataFrame({'name':names, 'redshift':redshifts, 'dm':dms, 'dmerr':dm_errs, 'host':hosts, 'type':types, 'coordinates':coords})
+
 df_used.to_csv(f'{dirpath}/used_data.csv', index=False)
 
 
@@ -126,75 +140,95 @@ vel2 = redshifts2 * 299792.458 # km/s
 # Computing fits
 
 # Define cosmological models
-def model_flatlambdacdm(x_data, H0, Om0):
-    cosmo = FlatLambdaCDM(H0=H0, Om0=Om0)
+def model_68_lambdacdm(x_data, Om0, Ode0):
+    cosmo = LambdaCDM(H0=68, Om0=Om0, Ode0=Ode0)
     return cosmo.distmod(x_data).value
 
-def model_lambdacdm(x_data, H0, Om0, Ode0):
-    cosmo = LambdaCDM(H0=H0, Om0=Om0, Ode0=Ode0)
+def model_70_lambdacdm(x_data, Om0, Ode0):
+    cosmo = LambdaCDM(H0=70, Om0=Om0, Ode0=Ode0)
     return cosmo.distmod(x_data).value
 
-def model_computeHo(x_data, H0):
-    cosmo = FlatLambdaCDM(H0=H0, Om0=0.3)
+def model_72_lambdacdm(x_data, Om0, Ode0):
+    cosmo = LambdaCDM(H0=72, Om0=Om0, Ode0=Ode0)
+    return cosmo.distmod(x_data).value
+
+def model_70_flatlambdacdm(x_data, Om0):
+    cosmo = FlatLambdaCDM(H0=70, Om0=Om0)
     return cosmo.distmod(x_data).value
 
 # Perform cosmological fits
-cosmo_guess_flat = [70, 0.3]
-cosmo_bounds_flat = ([67.0, 0.0], [73.0, 1.0])
-popt_flat, pcov_flat = curve_fit(model_flatlambdacdm, redshifts, dms, 
-                                 sigma=dm_errs, p0=cosmo_guess_flat, bounds=cosmo_bounds_flat)
-H0_flat, Om0_flat = popt_flat
-std_error_flat = np.sqrt(np.diag(pcov_flat))
+cosmo_guess = [0.3, 0.7]
+cosmo_bounds = ([0.1, 0.5], [0.5, 0.9])
+popt_68, pcov_68 = curve_fit(model_68_lambdacdm, redshifts, dms, sigma=dm_errs, p0=cosmo_guess, bounds=cosmo_bounds)
+popt_70, pcov_70 = curve_fit(model_70_lambdacdm, redshifts, dms, sigma=dm_errs, p0=cosmo_guess, bounds=cosmo_bounds)
+popt_72, pcov_72 = curve_fit(model_72_lambdacdm, redshifts, dms, sigma=dm_errs, p0=cosmo_guess, bounds=cosmo_bounds)
+popt_70flat, pcov_70flat = curve_fit(model_70_flatlambdacdm, redshifts, dms, sigma=dm_errs, p0=[0.3], bounds=([0.1], [0.5]))
 
-cosmo_guess_lam = [70, 0.3, 0.7]
-cosmo_bounds_lam = ([67.0, 0.0, 0.0], [73.0, 1.0, 1.0])
-popt_lam, pcov_lam = curve_fit(model_lambdacdm, redshifts, dms, 
-                               sigma=dm_errs, p0=cosmo_guess_lam, bounds=cosmo_bounds_lam)
-H0_lam, Om0_lam, Ode0_lam = popt_lam
-std_error_lam = np.sqrt(np.diag(pcov_lam))
+Om0_68, Ode0_68 = popt_68
+Om0_70, Ode0_70 = popt_70
+Om0_72, Ode0_72 = popt_72
+Om0_70flat = popt_70flat
+std_error_68 = np.sqrt(np.diag(pcov_68))
+std_error_70 = np.sqrt(np.diag(pcov_70))
+std_error_72 = np.sqrt(np.diag(pcov_72))
+std_error_70flat = np.sqrt(np.diag(pcov_70flat))
 
-cosmo_guess_H0 = [70]
-popt_H0, pcov_H0 = curve_fit(model_computeHo, redshifts, dms, sigma=dm_errs, p0=cosmo_guess_H0)
-H0_only, = popt_H0
-std_error_H0 = np.sqrt(np.diag(pcov_H0))
+print("Om0_68: ", Om0_68, " Ode0_68: ", Ode0_68)
+print("Om0_70: ", Om0_70, " Ode0_70: ", Ode0_70)
+print("Om0_72: ", Om0_72, " Ode0_72: ", Ode0_72)
+print("Om0_70flat: ", Om0_70flat)
 
-# Print fit results
-print(f"Flat LambdaCDM Fit: H0 = {H0_flat:.5f} \u00b1 {std_error_flat[0]:.5f}, Om0 = {Om0_flat:.5f} \u00b1 {std_error_flat[1]:.5f}")
-print(f"LambdaCDM Fit: H0 = {H0_lam:.5f} \u00b1 {std_error_lam[0]:.5f}, Om0 = {Om0_lam:.5f} \u00b1 {std_error_lam[1]:.5f}, Ode0 = {Ode0_lam:.5f} \u00b1 {std_error_lam[2]:.5f}")
-print(f"Only H0 Fit: H0 = {H0_only:.5f} \u00b1 {std_error_H0[0]:.5f}")
 
 # Generate redshift values for plotting
 z_plot = np.linspace(0.001, 0.125, 1000)
 
 # Compute best-fit cosmological models
-distmod_flat = model_flatlambdacdm(z_plot, H0_flat, Om0_flat)
-distmod_lam = model_lambdacdm(z_plot, H0_lam, Om0_lam, Ode0_lam)
-distmod_H0 = model_computeHo(z_plot, H0_only)
+distmod_68 = model_68_lambdacdm(z_plot, Om0_68, Ode0_68)
+distmod_70 = model_70_lambdacdm(z_plot, Om0_70, Ode0_70)
+distmod_72 = model_72_lambdacdm(z_plot, Om0_72, Ode0_72)
+distmod_70flat = model_70_flatlambdacdm(z_plot, Om0_70flat)
 
 # Plot results
 # Plot results with residuals
 fig, axs = plt.subplots(2, 1, figsize=(8, 10), gridspec_kw={'height_ratios': [3, 1]})
 
 # Main plot
-axs[0].scatter(redshifts, dms, label="SN Data", color='blue')
-axs[0].errorbar(redshifts, dms, yerr=dm_errs, fmt="o", color='blue', label="SN Errors")
-axs[0].plot(z_plot, distmod_flat, label=f"Flat LambdaCDM: H0 = {H0_flat:.2f}", color='r')
-axs[0].plot(z_plot, distmod_lam, label=f"LambdaCDM: H0 = {H0_lam:.2f}", linestyle="--", color="g")
-axs[0].plot(z_plot, distmod_H0, label=f"Only H0: H0 = {H0_only:.2f}", linestyle=":", color="b")
+axs[0].scatter(redshifts, dms, color='blue')
+axs[0].errorbar(redshifts, dms, yerr=dm_errs, color='blue', fmt='o')
+axs[0].plot(z_plot, distmod_68, label=f"Best Fit (\u03A9m0 = {Om0_68:.2f}, \u03A9de0 = {Ode0_68:.2f})", color='red')
+axs[0].plot(z_plot, distmod_70, label=f"Best Fit (\u03A9m0 = {Om0_70:.2f}, \u03A9de0 = {Ode0_70:.2f})", color='green')
+axs[0].plot(z_plot, distmod_72, label=f"Best Fit (\u03A9m0 = {Om0_72:.2f}, \u03A9de0 = {Ode0_72:.2f})", color='purple')
+axs[0].plot(z_plot, distmod_70flat, label=f"Best Fit (\u03A9m0 = {Om0_70flat:.2f})", color='orange')
 axs[0].set_xlabel("Redshift (z)")
 axs[0].set_ylabel("Distance Modulus (\u03bc)")
 axs[0].legend()
 axs[0].set_title("Cosmological Fits")
 
-# Residuals calculation
-residuals_flat = dms - model_flatlambdacdm(redshifts, H0_flat, Om0_flat)
-residuals_lam = dms - model_lambdacdm(redshifts, H0_lam, Om0_lam, Ode0_lam)
-residuals_H0 = dms - model_computeHo(redshifts, H0_only)
+# Calculate residuals
+residuals_68 = dms - model_68_lambdacdm(redshifts, Om0_68, Ode0_68)
+residuals_70 = dms - model_70_lambdacdm(redshifts, Om0_70, Ode0_70)
+residuals_72 = dms - model_72_lambdacdm(redshifts, Om0_72, Ode0_72)
+residuals_70flat = dms - model_70_flatlambdacdm(redshifts, Om0_70flat)
+
+# Standard deviation of residuals for each fit
+std_dev_flat = np.std(residuals_68)
+std_dev_lam = np.std(residuals_70)
+std_dev_flat_lam = np.std(residuals_72)
+std_dev_flat_70 = np.std(residuals_70flat)
+
+# Print standard deviations
+print(f"Standard Deviation for Flat LambdaCDM: {std_dev_flat:.4f}")
+print(f"Standard Deviation for LambdaCDM: {std_dev_lam:.4f}")
+print(f"Standard Deviation for LambdaCDM (72): {std_dev_flat_lam:.4f}")
+print(f"Standard Deviation for Flat LambdaCDM (70): {std_dev_flat_70:.4f}")
+
+
 
 # Residuals plot
-axs[1].scatter(redshifts, residuals_flat, label="Flat LambdaCDM Residuals", color='r')
-axs[1].scatter(redshifts, residuals_lam, label="LambdaCDM Residuals", color='g', alpha=0.6)
-axs[1].scatter(redshifts, residuals_H0, label="Only H0 Residuals", color='b', alpha=0.6)
+axs[1].scatter(redshifts, residuals_68, color='red', label=f"Best Fit (\u03A9m0 = {Om0_68:.2f}, \u03A9de0 = {Ode0_68:.2f})")
+axs[1].scatter(redshifts, residuals_70, color='green', label=f"Best Fit (\u03A9m0 = {Om0_70:.2f}, \u03A9de0 = {Ode0_70:.2f})")
+axs[1].scatter(redshifts, residuals_72, color='purple', label=f"Best Fit (\u03A9m0 = {Om0_72:.2f}, \u03A9de0 = {Ode0_72:.2f})")
+axs[1].scatter(redshifts, residuals_70flat, color='orange', label=f"Best Fit (\u03A9m0 = {Om0_70flat:.2f})")
 axs[1].hlines(0, xmin=min(redshifts), xmax=max(redshifts), colors='gray', linestyles='dashed')
 axs[1].set_xlabel("Redshift (z)")
 axs[1].set_ylabel("Residuals")
@@ -203,4 +237,76 @@ axs[1].set_title("Residuals")
 
 plt.tight_layout()
 plt.show()
+fig.savefig(f'{dirpath}/hubble_diagram.png')
 
+
+
+
+
+#### new fitting model
+from scipy.integrate import quad
+from scipy.optimize import curve_fit
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Constants
+c = 299792.458  # Speed of light in km/s
+
+# Luminosity distance function for a single redshift value
+def luminosity_distance_single(z, H0, Omega_m, Omega_L):
+    def integrand(z_prime, Omega_m, Omega_L):
+        return 1.0 / np.sqrt(Omega_m * (1 + z_prime)**3 + Omega_L)
+    integral, _ = quad(integrand, 0, z, args=(Omega_m, Omega_L))
+    return (c * (1 + z) / H0) * integral
+
+# Vectorize the luminosity distance function
+def luminosity_distance(z, H0, Omega_m, Omega_L):
+    return np.array([luminosity_distance_single(z_i, H0, Omega_m, Omega_L) for z_i in z])
+
+# Distance modulus function
+def distance_modulus(z, H0, Omega_m, Omega_L):
+    d_L = luminosity_distance(z, H0, Omega_m, Omega_L)  # in Mpc
+    return 5 * np.log10(d_L) + 25
+
+
+# Hubble constant values to fix
+H0_values = [67, 70, 73]
+
+# Store fit results
+fit_results = []
+z_fit = np.linspace(min(redshifts), max(redshifts), 500)
+
+plt.figure(figsize=(10, 6))
+
+for H0_fixed in H0_values:
+    # Perform fit with fixed H0
+    def model(z, Omega_m, Omega_L):
+        return distance_modulus(z, H0_fixed, Omega_m, Omega_L)
+
+    # Initial guesses for Omega_m and Omega_L
+    p0 = [0.3, 0.7]
+
+    params, covariance = curve_fit(model, redshifts, dms, p0=p0, bounds = ([0.1, 0.5], [0.5, 0.9]))
+    Omega_m_fit, Omega_L_fit = params
+    
+    # Generate the fit curve
+    mu_fit = model(z_fit, Omega_m_fit, Omega_L_fit)
+
+    # Save results
+    fit_results.append((H0_fixed, Omega_m_fit, Omega_L_fit))
+
+    # Plot the fit
+    plt.plot(z_fit, mu_fit, label=f"$H_0$ = {H0_fixed}, $Omega_m$ = {Omega_m_fit:.2f}, $Omega_\Lambda$ = {Omega_L_fit:.2f}$")
+
+# Plot data
+plt.scatter(redshifts, dms, color='black', label='Data')
+plt.xlabel('Redshift (z)')
+plt.ylabel('Distance Modulus (mu)')
+plt.legend()
+plt.title('Fits with Fixed Hubble Constants')
+plt.grid()
+plt.show()
+
+# Print fit results
+for H0_fixed, Omega_m_fit, Omega_L_fit in fit_results:
+    print(f"H0: {H0_fixed}, Omega_m: {Omega_m_fit:.2f}, Omega_L: {Omega_L_fit:.2f}")
