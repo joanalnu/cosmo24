@@ -151,8 +151,8 @@ def model(z, H0, Omega_m, Omega_L):
 
 p0 = [70, 0.3, 0.7] # guess
 bounds = ([0.0, 0.0, 0.0],[1000, 1000, 1000])# bounds
-params, cov = curve_fit(model, redshifts, dms, p0=p0, sigma=dm_errs)
-# params, cov = curve_fit(model, redshifts, dms, p0=p0, sigma=dm_errs, bounds=bounds)
+# params, cov = curve_fit(model, redshifts, dms, p0=p0, sigma=dm_errs)
+params, cov = curve_fit(model, redshifts, dms, p0=p0, sigma=dm_errs, bounds=bounds)
 H0_fit, Omega_m_fit, Omega_L_fit = params
 H0_fit_err, Omega_m_fit_err, Omega_L_fit_err = np.sqrt(np.diag(cov))
 mu_fit = model(z, H0_fit, Omega_m_fit, Omega_L_fit) # generate fit curve (equivalent to distmod)
@@ -196,7 +196,7 @@ ax[0].plot(z, mu_fit, label=f'Luminosity distance fit (H0={H0_fit:.2f}, Om0={Ome
 
 # alternative universes
 # ax[0].plot(z, distmod_accelerating, color='orange', label='Accelerating universe', linestyle='-.') # not needed (LambdaCDM already represents this)
-ax[0].plot(z, distmod_decelerating_closed, color='orange', label='Decelerating universe (closed)', linestyle='-.')
+ax[0].plot(z, distmod_decelerating_closed, color='orange', label=f'Decelerating universe (closed) (H0={69.0}, Om0={2.5}, Ode0={-1.0})', linestyle='-.')
 # ax[0].plot(z, distmod_decelerating_open, color='lightblue', label='Decelerating universe (open)', linestyle='-.') # does not appear in plot
 
 
